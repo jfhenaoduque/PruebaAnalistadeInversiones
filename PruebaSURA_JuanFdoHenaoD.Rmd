@@ -12,82 +12,130 @@ Se contruyo la base de datos con tres campos: fecha, tasa representativa del mer
 La fuente de información para la serie del Brent es a través de U.S. Energy Information Administration (EIA), y para la tasa representativa del mercado (TRM) es el Banco de la República (BanRep) cargamos estas series a las cuales le asignaremos el nombre de Base.
 ```{r}
 #install.packages("quantmod")
+#install.packages("tidyverse")
 #install.packages("dplyr")
+#install.packages("ggplot2")
 
-#library(quantmod)
-#library(gplots)
-#library(dplyr)
+library(quantmod)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(lubridate)
+library(stats4)
+library(fUnitRoots)
+library(aTSA)
+library(timeSeries)
+library(timeDate)
+library(timsac)
 getwd()
-setwd("/Users/jfhenaoduque/Google Drive/SURA")
+#setwd("/Users/jfhenaoduque/Google Drive/SURA")
+setwd("C:/Users/juanhena/Documents/SURA")
 ```
 
 ```{r eval = FALSE}
 # Base de datos
-Base <- read.csv("/Users/jfhenaoduque/Google Drive/SURA/BDPunto1.csv", sep=";", dec=".")
-# Importamos los datos
-Base<-na.omit(Base)
+# PUNTO 1 -----------------------------------------------------------------
+Base<-read.csv("BDPunto1.csv", sep=",", dec=".")
+
+BDPunto1 <- read_delim("BDPunto1.csv", ",", 
+                       escape_double = FALSE, trim_ws = TRUE)
+
+BDPunto1 <- separate(BDPunto1,"Fecha",c("day","month","year"), sep= "/")
+
+
+#mensual
+
+BDPunto1_m <- BDPunto1 %>% group_by(month,year) %>% summarize(mean_trm = mean(trm),
+                                                              mean_brent = mean(brent, na.rm = T))
+
+BDPunto1_m <- BDPunto1_m %>% arrange(year)
+
+#anual
+
+BDPunto1_y <- BDPunto1 %>% group_by(year) %>% summarize(mean_trm = mean(trm),
+                                                        mean_brent = mean(brent, 
+                                                                          na.rm = T))
 ```
 
-En el código anterior, se entenderá que **Base** es el nombre que tomará nuestra serie.
-Como al momento de cargar los datos, éstos se verán como una hoja plana de información, es decir, el programa leerá los datos, pero asumirá que es una impresión, no manipulable; se contrarresta este inconveniente introducimendo el comando **attach** que nos ayudará a seccionar la información, dándole la opción al programa de transformar la información como si fuera una serie cargada en Excel, brindándonos completa manipulación.: 
+En el código anterior, se entenderá que **BDPunto1** es el nombre que tomará nuestra serie diaria. La base **BDPunto1_m** será nuestra serie en frecuencia mensual y la base **BDPunto1_y** será nuestra serie con frecuencia anual
+Como al momento de cargar los datos, Estos se verán como una hoja plana de información, es decir, el programa leerá los datos, pero asumirá que es una impresión, no manipulable; se contrarresta este inconveniente introducimendo el comando **attach** que nos ayudará a seccionar la información, dándole la opción al programa de transformar la información como si fuera una serie cargada en Excel, brindándonos completa manipulación.: 
 
 ```{r eval = FALSE}
 attach(Base)
+#attach(BDPunto1)
+#attach(BDPunto1_m)
+#attach(BDPunto1_y)
 ```
-
-Otro problema identificable en R es el hecho que por defecto los resultados del programa siempre serán vistos en formato de notación cientifica cuando los datos tienen muchos decimales. Entonces, para modificar los resultados, a fin de obtener el resultado con los decimales completos usamos la función:
-
+Otro problema identificable en R es el hecho que por defecto los resultados del programa siempre seran vistos en formato de notación cientifica cuando los datos tienen muchos decimales. Entonces, para modificar los resultados, a fin de obtener el resultado con los decimales completos usamos la función:
 ```{r eval = FALSE}
 options(scipen = 999)
 ```
 
 ##### <span style="color:red">*NOTA*
 
+<span style="color:red">**Sobre la descarga de los datos: Inicialmente intente hacer la descarga del Brent por Yahoo Finance con frecuencia diaria del tickey BZ=F pero este no fue posible, ya que solo me generaba los últimos 20 datos, para testear si era algo del código o error mío (capa 8) lo probe con el del WTI que tiene etiqueta CL=F y la descarga si se efectuaba. No obstante, dado que la economía colombiana tiene como precio de referencia desde 2008 el Brent, realice su descarga en EIA que recoge las cifras arrojadas por Thomson Reuters**
 
-<span style="color:red">**Sobre la descarga de los datos: Inicialmente intente hacer la descarga del Brent por Yahoo Finance con frecuencia diaria del tickey BZ=F pero este no fue posible, ya que solo me generaba los últimos 20 datos, para testear si era algo del código o error mío (capa 8) lo probe con el del WTI que tiene etiqueta CL=F y la descarga si se efectuó. No obstante, dado que la economía colombiana tiene como precio de referencia desde 2008 el Brent, realice su descarga en EIA que recoge las cifras arrojadas por Thomson Reuters**
-
-Convertimos la serie diaria en mensual
-
-```{r}
-BaseMensual<-Base[-c(1:20,22:40,42:60,62:82,84:103,105:123,125:146,148:167,169:188,190:211,213:230,232:252,
-                     254:272,274:291,293:313,315:334,336:354,356:376,378:398,400:419,421:440,442:461,463:482,484:504,
-                     506:523,525:542,544:564,566:585,587:605,607:628,630:649,651:671,673:692,694:713,715:734,736:756,
-                     758:776,778:795,797:818,820:838,840:859,861:881,883:901,903:924,926:945,947:966,968:987,989:1008,
-                     1010:1028,1030:1048,1050:1070,1072:1090,1092:1112,1114:1133,1135:1154,1156:1177,1179:1196,1198:1219,1221:1240,1242:1260,
-                     1262:1281,1283:1300,1302:1320,1322:1342,1344:1364,1366:1384,1386:1406,1408:1428,1430:1448,1450:1471,1473:1491,1493:1512,
-                     1514:1534,1536:1553,1555:1574,1576:1595,1597:1617,1619:1638,1640:1660,1662:1681,1683:1702,1704:1725,1727:1744,1746:1766,
-                     1768:1786,1788:1806,1808:1828,1830:1849,1851:1869,1871:1890,1893:1912,1914:1935,1937:1956,1958:1979,1981:2000,2002:2022,
-                     2024:2042,2044:2062,2064:2084,2086:2104,2106:2126,2128:2148,2150:2169,2171:2192,2194:2214,2216:2235,2237:2257,2259:2278,
-                     2280:2299,2301:2319,2321:2342,2344:2361,2363:2384,2386:2406,2408:2427,2429:2450,2452:2471,2473:2493,2495:2515,2517:2535,
-                     2537:2557,2559:2577,2579:2598,2600:2619,2621:2641,2643:2662,2664:2684,2686:2707,2709:2727,2729:2749,2751:2772,2774:2790,
-                     2792:2812,2814:2832,2834:2853,2855:2874,2876:2896,2898:2916,2918:2939,2941:2961,2963:2982,2984:3005,3007:3026,3028:3047,
-                     3049:3069,3071:3089,3091:3111,3113:3132,3134:3152,3154:3174,3176:3197,3199:3218,3220:3240,3242:3260),]
-
-```
-
-Convertimos la serie anual
-
-```{r}
-BaseAnual<-Base[-c(1:252,254:504,506:756,758:1008,1010:1260,1262:1512,1514:1766,1768:2022,2024:2278,2280:2535,2537:2790,2792:3047,3049:3260),]
-
-```
 
 ***
 Realizamos los gráficos de la TRM y el precio del petróleo Brent en sus diferentes frecuencias:
+
 ```{r}
-plot(as.ts(Base$trm))
-plot(as.ts(Base$brent))
-plot(as.ts(BaseMensual$trm))
-plot(as.ts(BaseMensual$brent))
-plot(as.ts(BaseAnual$trm))
-plot(as.ts(BaseAnual$brent))
+
+plot(as.ts(BDPunto1$trm))
+plot(as.ts(BDPunto1$brent))
+plot(as.ts(BDPunto1_m$mean_trm))
+plot(as.ts(BDPunto1_m$mean_brent))
+plot(as.ts(BDPunto1_y$mean_trm))
+plot(as.ts(BDPunto1_y$mean_brent))
 ```
 
+Ahora gráficamos los datos con el fin de darnos una idea sobre los comportamientos de la TRM y el precio del brent
+library(plotly)
+
+```{r}
+Base$Fecha<-as.Date(Base$Fecha,"%d/%m/%y")
+library(plotly)
+plot_ly(data=subset(Base, subset= (Fecha>="2008-01-01")),
+        x = ~Fecha,
+        y = ~trm,
+        type= "scatter", mode="lines",
+        line=list(width=1,color="Blue"))%>%
+layout(title="Tasa Representativa del Mercado",
+        xaxis=list(title="Día"),
+        yaxis=list(title="COP/USD"))
+```
+```{r}
+Base$Fecha<-as.Date(Base$Fecha,"%d/%m/%y")
+library(plotly)
+plot_ly(data=subset(Base, subset= (Fecha>="2008-01-01")),
+        x = ~Fecha,
+        y = ~brent,
+        type= "scatter", mode="lines",
+        line=list(width=1,color="Red"))%>%
+layout(title="Brent",
+        xaxis=list(title="Día"),
+        yaxis=list(title="Precio barril Brent (USD)"))
+```
 ***
 ### Gráfico Boxplot
+Utilizamos el diagrama de cajas y bigotes para explorar posibles relaciones
 ```{r}
-boxplot(BaseMensual$trm)
-boxplot(BaseMensual$brent)
+
+boxplot(BDPunto1_m$mean_trm)
+boxplot(BDPunto1_m$mean_brent)
+
+BDPunto1_m$month<-as.Date(Base$month,"%m")
+plot_ly(data=subset(BDPunto1_m, subset= (BDPunto1_m$month<="01")),
+        x = ~month,
+        y = ~trm_mean,
+        type = "box")%>%
+  layout(title="TRM Mensual",
+         xaxis=list(title="Meses"),
+         yaxis=list(title="COP/USD"))
+
+
+
 ```
 
 
@@ -96,7 +144,7 @@ boxplot(BaseMensual$brent)
 Con el fin de tener un análisis más completo incluimos los rezagos de la variable de interés
 
 $$\begin{aligned}
-Correlación(trm,brent)=  Cov(trm,brent)/(S(trm)S(brent))
+Corr(trm,brent)=  Cov(trm,brent)/(S(trm)S(brent))
 \end{aligned}$$
 ```{r}
 # Funciones -----
@@ -109,7 +157,7 @@ corsi <- function(y,x1){
   
   correlacion <- matrix(data = NA, nrow = 1, ncol = 5)
   correlacion[1,1] <- cor(y,rezaga(x1,0),use = "pairwise.complete.obs")
-  correlacion[1,2] <- cor(y,rezaga(x1,-1),use = "pairwise.complete.obs")
+  correlacion[1,2] <- cor(y,rezaga(x1,-1),use ="pairwise.complete.obs")
   correlacion[1,3] <- cor(y,rezaga(x1,-2),use = "pairwise.complete.obs")
   correlacion[1,4] <- cor(y,rezaga(x1,-3),use = "pairwise.complete.obs")
   correlacion[1,5] <- cor(y,rezaga(x1,-4),use = "pairwise.complete.obs")
@@ -135,311 +183,165 @@ kpss.test(brent1)
 ```
 Como se observa en las tablas, tanto para la prueba de Dickey-Fuller aumentada (ADF), Phillips-Perron (PP), y Kwiatowski, Phillips, Shy, Schmidt (KPSS) se encuentra que la serie tiene raíces unitarias y por lo tanto se debe diferenciar la serie. 
 
-
-
-### Crear un modelo lineal a mano... con R
-
-Para ello usaremos el procedimiento que nos indica la formula con los siguientes pasos:
-
-1) Creamos una serie de datos semillas que nos ayuden a identificar el valor del intercepto $\alpha$, para ello:
-
-```{r eval = FALSE}
-x1 = rep(1,length(data[,1]))
+```{r}
+log <- data.frame(lapply(Base[,-1], log)) # saca logaritmos de determinado dataframe
+names(log) <- paste("l",names(log),sep = "") # le da nombre a este nuevo dataframe
+attach(log)
+ret <- data.frame(lapply(log,diff,differences = 1)) # saca las diferencias de los logaritmos
+names(ret) <- paste("r",names(ret),sep = "") # le da nombre a ese nuevo data frame
+attach(ret)
 ```
+Ahora tenemos la serie en retornos logaritmicos, con esto podemos procedemos a realizarle las pruebas de raíces unitarias a la trm y al brent en rendimientos logaritmicos y ver si cumplen los supuestos de estacionariedad que nos permitan tener mayor precisión sobre la asociación lineal entre estas dos variables y potencialmente poder realizar estimaciones y hacer inferencia estadística.
 
-Llamaremos entonces X1 a aquel vector de datos repetidos semilla. Como podemos ver la funci??n *rep* es una funci??n de repetici??n, al cual le solicitamos que repita muchas veces el valor 1, y como tal, para no estar contando a mano cuantos unos necesitamos con la funci??n *length(data[,1])* que nos va a tomar el largo de la informaci??n de una columna cualquiera de la serie de datos.
-
-2) Creamos la matriz X
-
-Aqui mezclamos la informaci??n del vector de valores x1 y las variables que deseemos poner en funci??n para evaluar.
-
-```{r eval = FALSE}
-x = as.matrix(data.frame(x1,x2,x3,...,xk))
+```{r}
+rlbrent1<-as.ts(ret[-c(1:504),]$rlbrent)
+rltrm1<-as.ts(ret[-c(1:504),]$rltrm)
+adf.test(rltrm1)
+adf.test(rlbrent1)
+PP.test(rltrm1)
+PP.test(rltrm1)
+kpss.test(rltrm1)
+kpss.test(rlbrent1)
 ```
-
-3) Multiplicamos... $X^TX$
-
-Para R las operaciones matematicas tienen una formulaci??n especial, por ejemplo, para hacer una transpuesta le diremos que use la funci??n *t()*.
-
-```{r eval = FALSE}
-xtx = t(x)%*%x
+Ahora con los retornos logarítmicos encontramos que el Brent y la TRM son estacionarias
+```{r}
+corsi(rltrm1,rlbrent1)
 ```
-
-4) Obtenemos el valor inverso de $X^TX$
-
-Para este caso, la funci??n de matriz inversa para R es solve, por lo tanto:
-
-```{r eval = FALSE}
-xtxi = solve(xtx)
-```
-
-5) Multiplicamos $X^TY$
-
-Asi mismo, como hicimos en el paso 3, repetimos el procedimiento, pero cambiamos a variable Y.
-
-```{r eval = FALSE}
-xty = t(x)%*%y
-```
-
-6) Obtenemos el estimador $\beta$
-
-Usamos exactamente el mismo formato:
-
-```{r eval = FALSE}
-b = xtxi%*%xty
-```
-
-### Como obtener los valores estimados de Y
-
-Recordemos entonces que la formula para hallar Y estimado es:
-
-$$\begin{aligned}
-\hat Y= X*\hat\beta
-\end{aligned}$$
-
-Para R, este procedimiento se efectuar?? de la siguiente manera:
-
-```{r eval = FALSE}
-yest = x%*%b
-```
-
-### Como obtener los errores del modelo frente al valor de Y
-
-Recordemos tambien que los residuales o errores se veran como la diferencia que hay entre mi realidad $Y$ y mi modelo $\hat Y$, por lo tanto:
-
-$$\begin{aligned}
-e_i = Y_i - \hat Y_i
-\end{aligned}$$
-
-Que en R se ve tal que asi:
-
-```{r eval = FALSE}
-error = y-yest
-```
-
+Observese que ahora esta relación es positiva, y posiblemente bajo una estimación contemporanea el coeficiente estimado entre esas dos variables sea significativo. No obstante podemos pensar
 ***
-
-### Crear un modelo lineal facilmente... con R
-
-Para R, este procedimiento se desarrollar?? de la siguiente manera:
-
-```{r eval = FALSE}
-rel = y ~ x
-model = lm(rel)
-summary(model)
+Ahora procedemos a obtener el promedio anual para la tasa representativa del mercado
+```{r}
+attach(BDPunto1_y)
+aggregate(mean_trm~year,data=BDPunto1_y, FUN=mean)
+```
+Ahora procedemos a obtener el promedio anual del precio internacional del petróleo
+```{r}
+aggregate(mean_brent~year,data=BDPunto1_y, FUN=mean)
+```
+Ahora obtenemos el precio promedio para cada mes y cada año
+```{r}
+aggregate(mean_trm~month*year,data=BDPunto1_m, FUN=mean)
+```
+```{r}
+aggregate(mean_brent~month*year,data=BDPunto1_m, FUN=mean)
 ```
 
-> Donde:
-
-* rel = Y~X, es la relaci??n de las variables X con Y
-* lm = linear model (modelo lineal)
-* summary = es el resumen estad??stico del modelo
-* model = nombre del modelo (puede ser cualquiera, sin ser el nombre de una variable
-
-*** 
-
-# Realidad vs el modelo estimado
-
-Una primera forma de revisi??n de nuestro modelo frente a la realidad de la variable analizada *Y*, nos da una peque??a visi??n de que tan eficiente fue nuestro modelo, para ello usaremos el siguiente c??digo: 
-
-```{r eval = FALSE}
-pmodel = predict(model)
-plot(y, ylab = "", xlab = "")
-par(new = TRUE)
-plot(pmodel,pch = 8,col="red", axes = FALSE, bty = "n", xlab = "observaciones", ylab = "Y Vs Yest")
+```{r}
+BDPunto1_m$month<-strftime(BDPunto1_m$month, format = "%B")
+BDPunto1_m$month<-strftime(BDPunto1_m$month, levels= month.name)
+aggregate(mean_brent~*month,data=BDPunto1_m,FUN=mean)
 ```
 
-Esto nos ayuda a comprender que tan alejados quedaron los puntos de nuestro modelo frente a los datos reales.
+Procedemos a representarlo en un gráfico
+```{r}
+aggregate(mean_trm~year*month,data=BDPunto1_m, FUN=mean)%>% 
+  plot_ly(
+          x = ~month,
+         y = ~mean_trm,
+         type = "scatter" ,mode = "lines",
+         split = ~year,
+         line=list(width=1))%>%
+  layout(title='Promedio diario mensual de la TRM',
+         xaxis=list(title="Días"),
+         yaxis=list(title="COP/USD"))
+```
+```{r message=FALSE}
+aggregate(mean_brent~year*month,data=BDPunto1_m, FUN=mean)%>% 
+  plot_ly(
+          x = ~month,
+         y = ~mean_brent,
+         type = "scatter" ,mode = "lines",
+         split = ~year,
+         line=list(width=1))%>%
+  layout(title='Promedio diario mensual del Barril de Petróleo Brent',
+         xaxis=list(title="Días"),
+         yaxis=list(title="USD"))
+```
+### Importancia de estas dos variables
+La actividad económica colombiana ha sufrido notables cambios respecto a su materia prima de interés, casi durante todo el siglo XX el precio internacional de referencia para la economía era el precio del café, no obstante desde el descubrimiento de los yacimientos de Cusiana y Rubiales hizo que lentamente la actividad del petróleo tomará mayor relevancia para nuestra economía al constituirse en el principal producto de exportación. La importancia del precio del petróleo es tal que durante la crisis del petróleo en el 2014 se tuvieron consecuencias importantes para el país , que obligaron a realizar reformas tributarias, ajustar el gasto estatal.
+Como se observa en la gráfica del Brent, este ha tenido caídas importantes en 2014  como consecuencia del descubrimiento en técnicas de Shale Gas y Shale Oil, y la sobreoferta de la OPEP. Durante este año, hubo notables caídas en el precio del petróleo producto de unas tensiones entre la OPEP en cabeza de Arabia Saudita y Rusia llevando a deterioros en la relación entre la OPEP y la OPEP+. No obstante, todo estas disputas se solucionarían en medio del confinamiento mundial producto de la pandemia del SARS-COV2, comunmente conocido como COVID-19.
 
-### *Grafica de Errores: Que tan disperso fue nuestro modelo*
+Dada la fuerte importancia que tiene para Colombia las rentas petróleras y el flujo de dinero que llega de divisas como producto de la venta de barriles de petróleo el comportamiento de la tasa representativa del mercado (trm, en adelante) depende mucho del precio internacional. Si bien, hay una dependencia entre estas variableses bueno considerar si existe una posible cointegración de estos procesos, para evitar así una posible relación espuria.
 
-Otra forma de verificar la eficiencia de nuestro modelo de forma gr??fica, es verificando que tan dispersos fueron nuestros errores de su valor esperado; recuerde que el m??todo **EMCO** nos indica que todos los estimadores ser??n **BLUE** *(Best Linear Unbiased Estimators)*, mejores estimadores lineales insesgados, significando que son los estimadores ??ptimos sin errores, y por lo tanto:
+```{r}
+rel<-lm(ltrm~lbrent)
+rel
+```
+ Podemos señalar que de acuerdo a las pruebas de raíces unitarias, y bajo lo propuesto por Granger en 1986 con las pruebas de cointegración se puede asumir que la trm y el precio del petróleo brent se encuentran cointegradas, es decir, hay una relación de largo plazo entre las dos, siendo está una elasticidad de largo plazo de -0.53.
+ Aunque no es el objetivo del trabajo sugiero un modelo de mecanismo de corrección de errores.
+ GRANGER, C.W.J (1986) ##"Developments in the Study of Co-Integrated Economic Variables"#. Oxford Bulletin of Economics and Statistics.
 
-$$\begin{aligned}
-E(e_i)=0
-\end{aligned}$$
-
-Si la gr??fica nos arroja que los puntos de los valores de $\hat Y_i$, est??n muy dispersos o alejados de cero, significar?? que el modelo no es el m??s eficiente, para ello usaremos el siguiente codigo:
-
-```{r eval = FALSE}
-error = residuals(model)
-plot(error,xlab="observaciones",ylab="errores del modelo")
-abline(h=0,col="red")
+# Parte 2
+## Traemos los datos
+```{r}
+library(quantmod)
+apple<-getSymbols("AAPL", from="2019-01-01", src="yahoo", auto.assign = F)[,6]
+microsoft<-getSymbols("MSFT", from="2019-01-01", src="yahoo", auto.assign = F)[,6] 
+amazon<-getSymbols("AMZN", from="2019-01-01", src="yahoo", auto.assign = F)[,6] 
+facebook<-getSymbols("FB", from="2019-01-01", src="yahoo", auto.assign = F)[,6] 
+google<-getSymbols("GOOGL", from="2019-01-01", src="yahoo", auto.assign = F)[,6] 
+Datos.prueba<-data.frame(apple, microsoft, amazon, facebook, google)
+```
+Las series escogidas, fueron las tecnológicas, dada su alta valoración en el mercado y el interés que despiertan en especial por sus avances que han llevado a pensar que estas incursionen en los mercados financieros con sus propios bancos o hasta sus propias monedas como intento realizarlo Facebook con Libra, la cual ha tenido una serie de tropiezos desde su anuncio, en los que socios estrategicos del proyecto han decidido retirar su participación en la iniciativa de Facebook.
+```{r}
+barChart(apple)
+barChart(amazon)
+barChart(facebook)
+barChart(google)
+barChart(microsoft)
+```
+En general observamos que todas estas series tuvieron una caída importante en el mes de marzo producto de la pandemia del COVID-19, aunque han tenido una notable recuperación, dado que este es uno de los sectores menos afectado por la pandemia e incluso algunas de estas empresas, Amazon por ejemplo, se ha visto favorecida por los confinamientos generalizados a nivel mundial debido a que su modelo de negocio se basa en las compras por internet. 
+## Apple
+```{r}
+# Calculamos los rendimientos
+applerends<-ROC(apple,type="discrete",na.pad = T)
+applerendl<-ROC(apple,type="continuous",na.pad = T)
+Datos.apple<-data.frame(apple,applerends,applerendl)
+plot(Datos.apple$AAPL.Adjusted.1, type="l")
+plot(Datos.apple$AAPL.Adjusted.2, type="l")
 ```
 
-*** 
-
-# Formas lineales alternativas
-
-Teniendo en cuenta las diferentes formas de tomar la informaci??n para los modelos lineales, los c??digos para verificar las formas funcionales alternativas de los modelos lineales son:
-
-####Modelo Lin - Lin (Lineal - Lineal)
-
-Forma Ecuacional
-$$\begin{aligned}
-\hat Y_i=\alpha + \hat \beta X_i+e_i
-\end{aligned}$$
-
-Codigo en R
-```{r eval = FALSE}
-model = lm(y ~ x)
-summary(model)
+## Amazon
+```{r}
+# Calculamos los rendimientos
+amazonrends<-ROC(amazon,type="discrete",na.pad = T)
+amazonrendl<-ROC(amazon,type="continuous",na.pad = T)
+Datos.amazon<-data.frame(amazon,amazonrends,amazonrendl)
+plot(Datos.amazon$AMZN.Adjusted.1, type="l")
+plot(Datos.amazon$AMZN.Adjusted.2, type="l")
 ```
 
-####Modelo Log - Log (logaritmo - Logaritmo)
-
-Forma Ecuacional
-$$\begin{aligned}
-Log \hat Y_i=\alpha + \hat \beta\, Log X_i+e_i\\
-\end{aligned}$$
-
-C??digo en R
-```{r eval = FALSE}
-model = lm(log(y)~log(x)
-summary(model)
+## Facebook
+```{r}
+# Calculamos los rendimientos
+facebookrends<-ROC(facebook,type="discrete",na.pad = T)
+facebookrendl<-ROC(facebook,type="continuous",na.pad = T)
+Datos.facebook<-data.frame(facebook,facebookrends,facebookrendl)
+plot(Datos.facebook$FB.Adjusted.1, type="l")
+plot(Datos.facebook$FB.Adjusted.2, type="l")
 ```
 
-####Modelo Lin - Log (lineal - Logaritmo)
-
-Forma Ecuacional
-$$\begin{aligned}
-\hat Y_i=\alpha + \hat \beta\, Log X_i+e_i\\
-\end{aligned}$$
-
-C??digo en R
-```{r eval = FALSE}
-model = lm(y~log(x))
-summary(model)
+## Google
+```{r}
+# Calculamos los rendimientos
+googlerends<-ROC(google,type="discrete",na.pad = T)
+googlerendl<-ROC(google,type="continuous",na.pad = T)
+Datos.google<-data.frame(google,googlerends,googlerendl)
+plot(Datos.google$GOOGL.Adjusted.1, type="l")
+plot(Datos.google$GOOGL.Adjusted.2, type="l")
 ```
 
-####Modelo Log - Lin (Logaritmo - lineal)
-
-Forma Ecuacional
-$$\begin{aligned}
-Log \hat Y_i=\alpha + \hat \beta X_i+e_i\\
-\end{aligned}$$
-
-Codigo en R
-```{r eval = FALSE}
-model = lm(log(y)~x)
-summary(model)
+## Microsoft
+```{r}
+# Calculamos los rendimientos
+microsoftrends<-ROC(microsoft,type="discrete",na.pad = T)
+microsoftrendl<-ROC(microsoft,type="continuous",na.pad = T)
+Datos.microsoft<-data.frame(microsoft,microsoftrends,microsoftrendl)
+plot(Datos.microsoft$MSFT.Adjusted.1, type="l")
+plot(Datos.microsoft$MSFT.Adjusted.2, type="l")
 ```
 
-*** 
 
-# Bondad de Ajuste
+# Punto 3 SQL
 
-Para verificar la eficiencia de nuestro modelo usaremos los indicadores de bondad de ajuste, que nos permiten revisar la perfecci??n que hay en la comparaci??n de los datos $Y$ y los datos de $\hat Y$. Los indicadores de Bondad de ajuste m??s usados en los modelos lineales son:
-
-***
-
-#### Coeficiente de determinaci??n R^2
-
-Tomando la formula considerada para hallar el coeficiente de determinaci??n:
-
-$$\begin{aligned}
-R^2 = 1- \frac{SSE}{SST};\qquad R^2 \in\, \mathbb R\: [0,1]
-\end{aligned}$$
-
-Que tambien puede ser entendida como
-
-$$\begin{aligned}
-R^2 = \frac{SSR}{SST};\qquad R^2 \in\, \mathbb R\: [0,1]
-\end{aligned}$$
-
-Los cuales pueden ser programados como: 
-
-```{r eval = FALSE}
-r2 = 1-(sse/sst)
-```
-
-O bien
-
-```{r eval = FALSE}
-r2 = ssr/sst
-```
-
-Para ello, se requiere entonces conocer los valores de $SSR$, $SSE$ y $SST$. 
-
-##### Sumatoria al cuadrado de la regresi??n $SSR$
-
-Teniendo en cuenta la f??rmula:
-
-$$\begin{aligned}
-SSR =  \sum_{i=1}^{n} {(\hat Y_i - \bar Y)}^2
-\end{aligned}$$
-
-El c??digo en R nos muestra que: 
-
-```{r eval = FALSE}
-pmodel = predict(model)
-ssr = sum((pmodel-mean(pmodel))^2)
-```
-
-##### Sumatoria al cuadrado de los errores $SSE$
-
-Teniendo en cuenta la f??rmula:
-
-$$\begin{aligned}
-SSE =  \sum_{i=1}^{n} {(Y_i - \hat Y_i)}^2
-\end{aligned}$$
-
-El c??digo en R nos muestra que: 
-
-```{r eval = FALSE}
-sse = deviance(model)
-```
-
-##### Sumatoria al cuadrado de los totales $SST$
-
-Teniendo en cuenta la f??rmula:
-
-$$\begin{aligned}
-SSE =  \sum_{i=1}^{n} {(Y_i - \bar Y_i)}^2
-\end{aligned}$$
-
-El c??digo en R nos muestra que: 
-
-```{r eval = FALSE}
-sst = ssr + sse
-```
-
-O bien
-
-```{r eval = FALSE}
-sst = sum((y-mean(y))^2)
-```
-
-***
-
-#### Coeficiente de determinaci??n R^2 ajustado
-
-Al encontrar que los modelos lineales m??ltiples tienen problemas de ajuste, la correcci??n propuesta de la formula $R^2$ es:
-
-$$\begin{aligned}
-R^2aj =  1-\frac{n-1}{n-k}*(1-R^2)
-\end{aligned}$$
-
-En R esta f??rmula queda formulada como:
-
-```{r eval = FALSE}
-r2a1 = 1-((NROW(y)-1)/(NROW(y)-NROW(coef(model1)))*(1-r2))
-```
-
-***
-
-#### An??lisis de criterios de informaci??n
-
-Respecto a los criterios de revisi??n sobre modificar un modelo con una o m??s variables, los an??lisis presentados son <span style="color:blue"> Criterio de informaci??n Akaike y <span style="color:blue"> Criterio de Informaci??n Schwartz.
-
-Para R, los criterios son:
-
-```{r eval = FALSE}
-AIC(model,model1)
-BIC(model,model1)
-```
-
->Donde:
-
-  * Model representar?? al modelo original
-  * Model1 representar?? al modelo modificado
+Se encuentra en otro archivo
