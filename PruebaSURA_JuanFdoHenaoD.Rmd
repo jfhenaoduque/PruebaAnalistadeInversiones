@@ -1,0 +1,445 @@
+---
+title: "Prueba Convocatoria Analista de Inversión"
+author: Juan Fernando Henao Duque
+date: \today
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+# Lectura de los datos
+Se contruyo la base de datos con tres campos: fecha, tasa representativa del mercado y precio del barril del petróleo tipo brent, dado que este desde 2008 es el precio de referencia para la compañia Ecopetrol. La base de datos se aumenta utilizando variables indicadoras para los días de la semana, los meses del año. 
+La fuente de información para la serie del Brent es a través de U.S. Energy Information Administration (EIA), y para la tasa representativa del mercado (TRM) es el Banco de la República (BanRep) cargamos estas series a las cuales le asignaremos el nombre de Base.
+```{r}
+#install.packages("quantmod")
+#install.packages("dplyr")
+
+#library(quantmod)
+#library(gplots)
+#library(dplyr)
+getwd()
+setwd("/Users/jfhenaoduque/Google Drive/SURA")
+```
+
+```{r eval = FALSE}
+# Base de datos
+Base <- read.csv("/Users/jfhenaoduque/Google Drive/SURA/BDPunto1.csv", sep=";", dec=".")
+# Importamos los datos
+Base<-na.omit(Base)
+```
+
+En el código anterior, se entenderá que **Base** es el nombre que tomará nuestra serie.
+Como al momento de cargar los datos, éstos se verán como una hoja plana de información, es decir, el programa leerá los datos, pero asumirá que es una impresión, no manipulable; se contrarresta este inconveniente introducimendo el comando **attach** que nos ayudará a seccionar la información, dándole la opción al programa de transformar la información como si fuera una serie cargada en Excel, brindándonos completa manipulación.: 
+
+```{r eval = FALSE}
+attach(Base)
+```
+
+Otro problema identificable en R es el hecho que por defecto los resultados del programa siempre serán vistos en formato de notación cientifica cuando los datos tienen muchos decimales. Entonces, para modificar los resultados, a fin de obtener el resultado con los decimales completos usamos la función:
+
+```{r eval = FALSE}
+options(scipen = 999)
+```
+
+##### <span style="color:red">*NOTA*
+
+
+<span style="color:red">**Sobre la descarga de los datos: Inicialmente intente hacer la descarga del Brent por Yahoo Finance con frecuencia diaria del tickey BZ=F pero este no fue posible, ya que solo me generaba los últimos 20 datos, para testear si era algo del código o error mío (capa 8) lo probe con el del WTI que tiene etiqueta CL=F y la descarga si se efectuó. No obstante, dado que la economía colombiana tiene como precio de referencia desde 2008 el Brent, realice su descarga en EIA que recoge las cifras arrojadas por Thomson Reuters**
+
+Convertimos la serie diaria en mensual
+
+```{r}
+BaseMensual<-Base[-c(1:20,22:40,42:60,62:82,84:103,105:123,125:146,148:167,169:188,190:211,213:230,232:252,
+                     254:272,274:291,293:313,315:334,336:354,356:376,378:398,400:419,421:440,442:461,463:482,484:504,
+                     506:523,525:542,544:564,566:585,587:605,607:628,630:649,651:671,673:692,694:713,715:734,736:756,
+                     758:776,778:795,797:818,820:838,840:859,861:881,883:901,903:924,926:945,947:966,968:987,989:1008,
+                     1010:1028,1030:1048,1050:1070,1072:1090,1092:1112,1114:1133,1135:1154,1156:1177,1179:1196,1198:1219,1221:1240,1242:1260,
+                     1262:1281,1283:1300,1302:1320,1322:1342,1344:1364,1366:1384,1386:1406,1408:1428,1430:1448,1450:1471,1473:1491,1493:1512,
+                     1514:1534,1536:1553,1555:1574,1576:1595,1597:1617,1619:1638,1640:1660,1662:1681,1683:1702,1704:1725,1727:1744,1746:1766,
+                     1768:1786,1788:1806,1808:1828,1830:1849,1851:1869,1871:1890,1893:1912,1914:1935,1937:1956,1958:1979,1981:2000,2002:2022,
+                     2024:2042,2044:2062,2064:2084,2086:2104,2106:2126,2128:2148,2150:2169,2171:2192,2194:2214,2216:2235,2237:2257,2259:2278,
+                     2280:2299,2301:2319,2321:2342,2344:2361,2363:2384,2386:2406,2408:2427,2429:2450,2452:2471,2473:2493,2495:2515,2517:2535,
+                     2537:2557,2559:2577,2579:2598,2600:2619,2621:2641,2643:2662,2664:2684,2686:2707,2709:2727,2729:2749,2751:2772,2774:2790,
+                     2792:2812,2814:2832,2834:2853,2855:2874,2876:2896,2898:2916,2918:2939,2941:2961,2963:2982,2984:3005,3007:3026,3028:3047,
+                     3049:3069,3071:3089,3091:3111,3113:3132,3134:3152,3154:3174,3176:3197,3199:3218,3220:3240,3242:3260),]
+
+```
+
+Convertimos la serie anual
+
+```{r}
+BaseAnual<-Base[-c(1:252,254:504,506:756,758:1008,1010:1260,1262:1512,1514:1766,1768:2022,2024:2278,2280:2535,2537:2790,2792:3047,3049:3260),]
+
+```
+
+***
+Realizamos los gráficos de la TRM y el precio del petróleo Brent en sus diferentes frecuencias:
+```{r}
+plot(as.ts(Base$trm))
+plot(as.ts(Base$brent))
+plot(as.ts(BaseMensual$trm))
+plot(as.ts(BaseMensual$brent))
+plot(as.ts(BaseAnual$trm))
+plot(as.ts(BaseAnual$brent))
+```
+
+***
+### Gráfico Boxplot
+```{r}
+boxplot(BaseMensual$trm)
+boxplot(BaseMensual$brent)
+```
+
+
+### Matriz de correlación
+
+Con el fin de tener un análisis más completo incluimos los rezagos de la variable de interés
+
+$$\begin{aligned}
+Correlación(trm,brent)=  Cov(trm,brent)/(S(trm)S(brent))
+\end{aligned}$$
+```{r}
+# Funciones -----
+rezaga <- function(x,nlag){
+  rez <- cbind(as.ts(x),lag(x,nlag))
+  lagged <- rez[1:length(x),2]
+  return(lagged)
+} 
+corsi <- function(y,x1){
+  
+  correlacion <- matrix(data = NA, nrow = 1, ncol = 5)
+  correlacion[1,1] <- cor(y,rezaga(x1,0),use = "pairwise.complete.obs")
+  correlacion[1,2] <- cor(y,rezaga(x1,-1),use = "pairwise.complete.obs")
+  correlacion[1,3] <- cor(y,rezaga(x1,-2),use = "pairwise.complete.obs")
+  correlacion[1,4] <- cor(y,rezaga(x1,-3),use = "pairwise.complete.obs")
+  correlacion[1,5] <- cor(y,rezaga(x1,-4),use = "pairwise.complete.obs")
+
+  
+  rownames(correlacion) <- c("Brent")  
+  colnames(correlacion) <- c("0","-1","-2","-3","-4")
+  return(correlacion)
+}
+brent1<-as.ts(Base[-c(1:505),]$brent)
+trm1<-as.ts(Base[-c(1:505),]$trm)
+corsi(trm1,brent1)
+```
+Dado que las dos series observadas sin importar su frecuencia presentan tendencia es pertinente realizarle pruebas de raíces unitarias para determinar la pertinencia de hacer la correlación de estas dos variables niveles o si se deben realizar en retornos.
+```{r}
+#install.packages("fUnitRoots")
+adf.test(trm1)
+adf.test(brent1)
+PP.test(trm1)
+PP.test(trm1)
+kpss.test(trm1)
+kpss.test(brent1)
+```
+Como se observa en las tablas, tanto para la prueba de Dickey-Fuller aumentada (ADF), Phillips-Perron (PP), y Kwiatowski, Phillips, Shy, Schmidt (KPSS) se encuentra que la serie tiene raíces unitarias y por lo tanto se debe diferenciar la serie. 
+
+
+
+### Crear un modelo lineal a mano... con R
+
+Para ello usaremos el procedimiento que nos indica la formula con los siguientes pasos:
+
+1) Creamos una serie de datos semillas que nos ayuden a identificar el valor del intercepto $\alpha$, para ello:
+
+```{r eval = FALSE}
+x1 = rep(1,length(data[,1]))
+```
+
+Llamaremos entonces X1 a aquel vector de datos repetidos semilla. Como podemos ver la funci??n *rep* es una funci??n de repetici??n, al cual le solicitamos que repita muchas veces el valor 1, y como tal, para no estar contando a mano cuantos unos necesitamos con la funci??n *length(data[,1])* que nos va a tomar el largo de la informaci??n de una columna cualquiera de la serie de datos.
+
+2) Creamos la matriz X
+
+Aqui mezclamos la informaci??n del vector de valores x1 y las variables que deseemos poner en funci??n para evaluar.
+
+```{r eval = FALSE}
+x = as.matrix(data.frame(x1,x2,x3,...,xk))
+```
+
+3) Multiplicamos... $X^TX$
+
+Para R las operaciones matematicas tienen una formulaci??n especial, por ejemplo, para hacer una transpuesta le diremos que use la funci??n *t()*.
+
+```{r eval = FALSE}
+xtx = t(x)%*%x
+```
+
+4) Obtenemos el valor inverso de $X^TX$
+
+Para este caso, la funci??n de matriz inversa para R es solve, por lo tanto:
+
+```{r eval = FALSE}
+xtxi = solve(xtx)
+```
+
+5) Multiplicamos $X^TY$
+
+Asi mismo, como hicimos en el paso 3, repetimos el procedimiento, pero cambiamos a variable Y.
+
+```{r eval = FALSE}
+xty = t(x)%*%y
+```
+
+6) Obtenemos el estimador $\beta$
+
+Usamos exactamente el mismo formato:
+
+```{r eval = FALSE}
+b = xtxi%*%xty
+```
+
+### Como obtener los valores estimados de Y
+
+Recordemos entonces que la formula para hallar Y estimado es:
+
+$$\begin{aligned}
+\hat Y= X*\hat\beta
+\end{aligned}$$
+
+Para R, este procedimiento se efectuar?? de la siguiente manera:
+
+```{r eval = FALSE}
+yest = x%*%b
+```
+
+### Como obtener los errores del modelo frente al valor de Y
+
+Recordemos tambien que los residuales o errores se veran como la diferencia que hay entre mi realidad $Y$ y mi modelo $\hat Y$, por lo tanto:
+
+$$\begin{aligned}
+e_i = Y_i - \hat Y_i
+\end{aligned}$$
+
+Que en R se ve tal que asi:
+
+```{r eval = FALSE}
+error = y-yest
+```
+
+***
+
+### Crear un modelo lineal facilmente... con R
+
+Para R, este procedimiento se desarrollar?? de la siguiente manera:
+
+```{r eval = FALSE}
+rel = y ~ x
+model = lm(rel)
+summary(model)
+```
+
+> Donde:
+
+* rel = Y~X, es la relaci??n de las variables X con Y
+* lm = linear model (modelo lineal)
+* summary = es el resumen estad??stico del modelo
+* model = nombre del modelo (puede ser cualquiera, sin ser el nombre de una variable
+
+*** 
+
+# Realidad vs el modelo estimado
+
+Una primera forma de revisi??n de nuestro modelo frente a la realidad de la variable analizada *Y*, nos da una peque??a visi??n de que tan eficiente fue nuestro modelo, para ello usaremos el siguiente c??digo: 
+
+```{r eval = FALSE}
+pmodel = predict(model)
+plot(y, ylab = "", xlab = "")
+par(new = TRUE)
+plot(pmodel,pch = 8,col="red", axes = FALSE, bty = "n", xlab = "observaciones", ylab = "Y Vs Yest")
+```
+
+Esto nos ayuda a comprender que tan alejados quedaron los puntos de nuestro modelo frente a los datos reales.
+
+### *Grafica de Errores: Que tan disperso fue nuestro modelo*
+
+Otra forma de verificar la eficiencia de nuestro modelo de forma gr??fica, es verificando que tan dispersos fueron nuestros errores de su valor esperado; recuerde que el m??todo **EMCO** nos indica que todos los estimadores ser??n **BLUE** *(Best Linear Unbiased Estimators)*, mejores estimadores lineales insesgados, significando que son los estimadores ??ptimos sin errores, y por lo tanto:
+
+$$\begin{aligned}
+E(e_i)=0
+\end{aligned}$$
+
+Si la gr??fica nos arroja que los puntos de los valores de $\hat Y_i$, est??n muy dispersos o alejados de cero, significar?? que el modelo no es el m??s eficiente, para ello usaremos el siguiente codigo:
+
+```{r eval = FALSE}
+error = residuals(model)
+plot(error,xlab="observaciones",ylab="errores del modelo")
+abline(h=0,col="red")
+```
+
+*** 
+
+# Formas lineales alternativas
+
+Teniendo en cuenta las diferentes formas de tomar la informaci??n para los modelos lineales, los c??digos para verificar las formas funcionales alternativas de los modelos lineales son:
+
+####Modelo Lin - Lin (Lineal - Lineal)
+
+Forma Ecuacional
+$$\begin{aligned}
+\hat Y_i=\alpha + \hat \beta X_i+e_i
+\end{aligned}$$
+
+Codigo en R
+```{r eval = FALSE}
+model = lm(y ~ x)
+summary(model)
+```
+
+####Modelo Log - Log (logaritmo - Logaritmo)
+
+Forma Ecuacional
+$$\begin{aligned}
+Log \hat Y_i=\alpha + \hat \beta\, Log X_i+e_i\\
+\end{aligned}$$
+
+C??digo en R
+```{r eval = FALSE}
+model = lm(log(y)~log(x)
+summary(model)
+```
+
+####Modelo Lin - Log (lineal - Logaritmo)
+
+Forma Ecuacional
+$$\begin{aligned}
+\hat Y_i=\alpha + \hat \beta\, Log X_i+e_i\\
+\end{aligned}$$
+
+C??digo en R
+```{r eval = FALSE}
+model = lm(y~log(x))
+summary(model)
+```
+
+####Modelo Log - Lin (Logaritmo - lineal)
+
+Forma Ecuacional
+$$\begin{aligned}
+Log \hat Y_i=\alpha + \hat \beta X_i+e_i\\
+\end{aligned}$$
+
+Codigo en R
+```{r eval = FALSE}
+model = lm(log(y)~x)
+summary(model)
+```
+
+*** 
+
+# Bondad de Ajuste
+
+Para verificar la eficiencia de nuestro modelo usaremos los indicadores de bondad de ajuste, que nos permiten revisar la perfecci??n que hay en la comparaci??n de los datos $Y$ y los datos de $\hat Y$. Los indicadores de Bondad de ajuste m??s usados en los modelos lineales son:
+
+***
+
+#### Coeficiente de determinaci??n R^2
+
+Tomando la formula considerada para hallar el coeficiente de determinaci??n:
+
+$$\begin{aligned}
+R^2 = 1- \frac{SSE}{SST};\qquad R^2 \in\, \mathbb R\: [0,1]
+\end{aligned}$$
+
+Que tambien puede ser entendida como
+
+$$\begin{aligned}
+R^2 = \frac{SSR}{SST};\qquad R^2 \in\, \mathbb R\: [0,1]
+\end{aligned}$$
+
+Los cuales pueden ser programados como: 
+
+```{r eval = FALSE}
+r2 = 1-(sse/sst)
+```
+
+O bien
+
+```{r eval = FALSE}
+r2 = ssr/sst
+```
+
+Para ello, se requiere entonces conocer los valores de $SSR$, $SSE$ y $SST$. 
+
+##### Sumatoria al cuadrado de la regresi??n $SSR$
+
+Teniendo en cuenta la f??rmula:
+
+$$\begin{aligned}
+SSR =  \sum_{i=1}^{n} {(\hat Y_i - \bar Y)}^2
+\end{aligned}$$
+
+El c??digo en R nos muestra que: 
+
+```{r eval = FALSE}
+pmodel = predict(model)
+ssr = sum((pmodel-mean(pmodel))^2)
+```
+
+##### Sumatoria al cuadrado de los errores $SSE$
+
+Teniendo en cuenta la f??rmula:
+
+$$\begin{aligned}
+SSE =  \sum_{i=1}^{n} {(Y_i - \hat Y_i)}^2
+\end{aligned}$$
+
+El c??digo en R nos muestra que: 
+
+```{r eval = FALSE}
+sse = deviance(model)
+```
+
+##### Sumatoria al cuadrado de los totales $SST$
+
+Teniendo en cuenta la f??rmula:
+
+$$\begin{aligned}
+SSE =  \sum_{i=1}^{n} {(Y_i - \bar Y_i)}^2
+\end{aligned}$$
+
+El c??digo en R nos muestra que: 
+
+```{r eval = FALSE}
+sst = ssr + sse
+```
+
+O bien
+
+```{r eval = FALSE}
+sst = sum((y-mean(y))^2)
+```
+
+***
+
+#### Coeficiente de determinaci??n R^2 ajustado
+
+Al encontrar que los modelos lineales m??ltiples tienen problemas de ajuste, la correcci??n propuesta de la formula $R^2$ es:
+
+$$\begin{aligned}
+R^2aj =  1-\frac{n-1}{n-k}*(1-R^2)
+\end{aligned}$$
+
+En R esta f??rmula queda formulada como:
+
+```{r eval = FALSE}
+r2a1 = 1-((NROW(y)-1)/(NROW(y)-NROW(coef(model1)))*(1-r2))
+```
+
+***
+
+#### An??lisis de criterios de informaci??n
+
+Respecto a los criterios de revisi??n sobre modificar un modelo con una o m??s variables, los an??lisis presentados son <span style="color:blue"> Criterio de informaci??n Akaike y <span style="color:blue"> Criterio de Informaci??n Schwartz.
+
+Para R, los criterios son:
+
+```{r eval = FALSE}
+AIC(model,model1)
+BIC(model,model1)
+```
+
+>Donde:
+
+  * Model representar?? al modelo original
+  * Model1 representar?? al modelo modificado
